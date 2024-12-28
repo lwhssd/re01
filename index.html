@@ -10,6 +10,12 @@
       font-size: 18px;
       margin: 20px;
     }
+
+    .button {
+      margin: 10px;
+      padding: 10px 20px;
+      font-size: 16px;
+    }
   </style>
 </head>
 
@@ -20,9 +26,15 @@
     <p>Gamma (绕 y 轴旋转): <span id="gamma">0</span>°</p>
   </div>
 
-  <button id="permission-btn">允许访问陀螺仪</button>
+  <button id="permission-btn" class="button">允许访问陀螺仪</button>
+  <button id="ble-btn" class="button">连接蓝牙设备</button>
+  <button id="send-btn" class="button" disabled>发送数据</button>
 
   <script>
+    let gyroData = { alpha: 0, beta: 0, gamma: 0 };
+    let bluetoothDevice;
+    let characteristicCache;
+
     const permissionBtn = document.getElementById('permission-btn');
 
     permissionBtn.addEventListener('click', async () => {
@@ -46,11 +58,63 @@
 
     function initGyroscope() {
       window.addEventListener('deviceorientation', (event) => {
-        document.getElementById('alpha').textContent = Math.round(event.alpha);
-        document.getElementById('beta').textContent = Math.round(event.beta);
-        document.getElementById('gamma').textContent = Math.round(event.gamma);
+        gyroData.alpha = Math.round(event.alpha);
+        gyroData.beta = Math.round(event.beta);
+        gyroData.gamma = Math.round(event.gamma);
+
+        document.getElementById('alpha').textContent = gyroData.alpha;
+        document.getElementById('beta').textContent = gyroData.beta;
+        document.getElementById('gamma').textContent = gyroData.gamma;
       });
     }
+
+    // 蓝牙连接相关代码
+    document.getElementById('ble-btn').addEventListener('click', async () => {
+      try {
+        bluetoothDevice = await navigator.bluetooth.requestDevice({
+          filters: [
+            // 根据你的蓝牙设备特征修改这里的过滤条件
+            { services: ['0000ffe0-0000-1000-8000-00805f9b34fb'] }
+          ]
+        });
+
+        const server = await bluetoothDevice.gatt.connect();
+        const service = await server.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb');
+        characteristicCache = await service.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb');
+
+        document.getElementById('send-btn').disabled = false;
+        alert('蓝牙设备连接成功！');
+      } catch (error) {
+        console.error('蓝牙连接错误:', error);
+        alert('蓝牙连接失败：' + error);
+      }
+    });
+
+    // 发送数据按钮事件
+    document.getElementById('send-btn').addEventListener('click', async () => {
+      if (!characteristicCache) {
+        alert('请先连接蓝牙设备！');
+        return;
+      }
+
+      try {
+        // 构建数据包
+        const data = new Uint8Array([
+          0xFF, // 包头
+          gyroData.alpha & 0xFF, // Alpha 数据
+          gyroData.beta & 0xFF,  // Beta 数据
+          gyroData.gamma & 0xFF, // Gamma 数据
+          0x00,                  // 无效数据
+          0xEE  // 包尾
+        ]);
+
+        await characteristicCache.writeValue(data);
+        console.log('数据发送成功:', Array.from(data).map(b => b.toString(16).padStart(2, '0')).join(' '));
+      } catch (error) {
+        console.error('发送数据错误:', error);
+        alert('发送数据失败：' + error);
+      }
+    });
   </script>
 </body>
 
