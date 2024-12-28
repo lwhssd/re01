@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>陀螺仪数据</title>
+  <style>
+    .data {
+      font-size: 18px;
+      margin: 20px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="data">
+    <p>Alpha (绕 z 轴旋转): <span id="alpha">0</span>°</p>
+    <p>Beta (绕 x 轴旋转): <span id="beta">0</span>°</p>
+    <p>Gamma (绕 y 轴旋转): <span id="gamma">0</span>°</p>
+  </div>
+
+  <button id="permission-btn">允许访问陀螺仪</button>
+
+  <script>
+    const permissionBtn = document.getElementById('permission-btn');
+
+    permissionBtn.addEventListener('click', async () => {
+      try {
+        // 请求设备方向权限
+        if (DeviceOrientationEvent.requestPermission) {
+          const permission = await DeviceOrientationEvent.requestPermission();
+          if (permission === 'granted') {
+            permissionBtn.style.display = 'none';
+            initGyroscope();
+          }
+        } else {
+          // 对于不需要权限的设备，直接初始化
+          permissionBtn.style.display = 'none';
+          initGyroscope();
+        }
+      } catch (err) {
+        console.error('获取权限失败:', err);
+      }
+    });
+
+    function initGyroscope() {
+      window.addEventListener('deviceorientation', (event) => {
+        document.getElementById('alpha').textContent = Math.round(event.alpha);
+        document.getElementById('beta').textContent = Math.round(event.beta);
+        document.getElementById('gamma').textContent = Math.round(event.gamma);
+      });
+    }
+  </script>
+</body>
+
+</html>
