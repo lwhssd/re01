@@ -73,72 +73,54 @@
       try {
         console.log('开始搜索蓝牙设备...');
 
-        // 使用最宽松的搜索条件
         bluetoothDevice = await navigator.bluetooth.requestDevice({
-          // 接受所有设备，不设置过滤器
+          // 接受所有设备
           acceptAllDevices: true,
-          // 列出所有可能需要访问的服务
           optionalServices: [
-            // 串口服务
+            // BT04 可能使用的服务 UUID
+            '0000fff0-0000-1000-8000-00805f9b34fb',
+            '0000fff1-0000-1000-8000-00805f9b34fb',
+            '0000fff2-0000-1000-8000-00805f9b34fb',
             '0000ffe0-0000-1000-8000-00805f9b34fb',
-            'ffe0',
-            '0000ffe1-0000-1000-8000-00805f9b34fb',
-            'ffe1',
-            // 通用访问服务
-            '00001800-0000-1000-8000-00805f9b34fb',
-            // 通用属性服务
-            '00001801-0000-1000-8000-00805f9b34fb',
-            // 设备信息服务
-            '0000180a-0000-1000-8000-00805f9b34fb',
-            // 简短形式的 UUID
-            '180a',
-            '180f',
-            'fff0'
+            '0000ffe1-0000-1000-8000-00805f9b34fb'
           ]
         });
 
         console.log('选择的设备:', bluetoothDevice);
 
-        if (!bluetoothDevice) {
-          throw new Error('未选择设备');
-        }
-
-        // 尝试连接
-        console.log('正在连接到设备...');
+        // 连接到设备
         const server = await bluetoothDevice.gatt.connect();
         console.log('GATT 服务器已连接');
 
-        // 获取所有可用服务
+        // 获取所有服务
         const services = await server.getPrimaryServices();
         console.log('可用的服务:', services);
 
-        // 寻找合适的服务
-        let targetService;
+        // 遍历查找可用的服务和特征值
         for (const service of services) {
           console.log('发现服务:', service.uuid);
-          if (service.uuid.includes('ffe0') || service.uuid.includes('fff0')) {
-            targetService = service;
-            break;
+          const characteristics = await service.getCharacteristics();
+
+          for (const characteristic of characteristics) {
+            console.log('发现特征值:', characteristic.uuid, {
+              canRead: characteristic.properties.read,
+              canWrite: characteristic.properties.write,
+              canNotify: characteristic.properties.notify
+            });
+
+            // 保存可写的特征值
+            if (characteristic.properties.write || characteristic.properties.writeWithoutResponse) {
+              characteristicCache = characteristic;
+            }
           }
         }
 
-        if (!targetService) {
-          throw new Error('未找到合适的服务');
-        }
-
-        // 获取特征值
-        const characteristics = await targetService.getCharacteristics();
-        console.log('可用的特征值:', characteristics);
-
-        // 找到可写入的特征值
-        characteristicCache = characteristics.find(char => char.properties.writeWithoutResponse || char.properties.write);
-
-        if (!characteristicCache) {
+        if (characteristicCache) {
+          document.getElementById('send-btn').disabled = false;
+          alert('蓝牙设备连接成功！');
+        } else {
           throw new Error('未找到可写入的特征值');
         }
-
-        document.getElementById('send-btn').disabled = false;
-        alert('蓝牙设备连接成功！');
 
       } catch (error) {
         console.error('蓝牙操作失败:', error);
