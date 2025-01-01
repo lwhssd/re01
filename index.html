@@ -34,6 +34,8 @@
     let gyroData = { alpha: 0, beta: 0, gamma: 0 };
     let bluetoothDevice;
     let characteristicCache;
+    let isTransmitting = false; // 控制发送状态
+    let transmitInterval; // 发送定时器
 
     const permissionBtn = document.getElementById('permission-btn');
 
@@ -128,31 +130,85 @@
       }
     });
 
-    // 发送数据按钮事件
-    document.getElementById('send-btn').addEventListener('click', async () => {
+    // 发送按钮事件监听
+    document.getElementById('send-btn').addEventListener('click', () => {
+      if (!isTransmitting) {
+        // 开始发送
+        startTransmitting();
+        document.getElementById('send-btn').textContent = '停止发送';
+      } else {
+        // 停止发送
+        stopTransmitting();
+        document.getElementById('send-btn').textContent = '发送数据';
+      }
+    });
+
+    // 开始发送数据
+    function startTransmitting() {
       if (!characteristicCache) {
-        alert('请先连接蓝牙设备！');
+        alert('请先连接蓝牙设备');
         return;
       }
 
-      try {
-        // 构建数据包
-        const data = new Uint8Array([
-          0xFF, // 包头
-          gyroData.alpha & 0xFF, // Alpha 数据
-          gyroData.beta & 0xFF,  // Beta 数据
-          gyroData.gamma & 0xFF, // Gamma 数据
-          0x00,                  // 无用数据
-          0xFE  // 包尾
-        ]);
+      isTransmitting = true;
 
-        await characteristicCache.writeValue(data);
-        console.log('数据发送成功:', Array.from(data).map(b => b.toString(16).padStart(2, '0')).join(' '));
-      } catch (error) {
-        console.error('发送数据错误:', error);
-        alert('发送数据失败：' + error);
+      // 每100ms发送一次数据
+      transmitInterval = setInterval(async () => {
+        try {
+          // 获取当前陀螺仪数据
+          const data = {
+            alpha: parseInt(document.getElementById('alpha').textContent),
+            beta: parseInt(document.getElementById('beta').textContent),
+            gamma: parseInt(document.getElementById('gamma').textContent),
+            random: Math.floor(Math.random() * 256)
+          };
+
+          // 构建数据包
+          const buffer = new Uint8Array([
+            0xFF,                // 包头
+            data.alpha & 0xFF,   // Alpha 数据
+            data.beta & 0xFF,    // Beta 数据
+            data.gamma & 0xFF,   // Gamma 数据
+            data.random & 0xFF,  // 随机数据
+            0xEE                 // 包尾
+          ]);
+
+          // 发送数据
+          await characteristicCache.writeValue(buffer);
+
+          // 打印发送的数据
+          console.log('发送数据包:', Array.from(buffer).map(b => b.toString(16).padStart(2, '0')).join(' '));
+
+        } catch (error) {
+          console.error('发送数据失败:', error);
+          stopTransmitting();
+          alert('发送数据失败: ' + error.message);
+        }
+      }, 100); // 发送间隔为100ms
+    }
+
+    // 停止发送数据
+    function stopTransmitting() {
+      isTransmitting = false;
+      if (transmitInterval) {
+        clearInterval(transmitInterval);
+        transmitInterval = null;
       }
-    });
+      document.getElementById('send-btn').textContent = '发送数据';
+    }
+
+    // 当蓝牙断开连接时停止发送
+    function handleDisconnection() {
+      stopTransmitting();
+      characteristicCache = null;
+      document.getElementById('send-btn').disabled = true;
+      alert('蓝牙连接已断开');
+    }
+
+    // 添加断开连接的监听
+    if (bluetoothDevice) {
+      bluetoothDevice.addEventListener('gattserverdisconnected', handleDisconnection);
+    }
   </script>
 </body>
 
