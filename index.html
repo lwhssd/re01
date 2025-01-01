@@ -70,23 +70,36 @@
 
     // 蓝牙连接相关代码
     document.getElementById('ble-btn').addEventListener('click', async () => {
+      // 检查浏览器是否支持 Web Bluetooth
+      if (!navigator.bluetooth) {
+        alert('你的浏览器不支持 Web Bluetooth API，请使用 Chrome 浏览器');
+        return;
+      }
+
       try {
         bluetoothDevice = await navigator.bluetooth.requestDevice({
-          filters: [
-            // 根据你的蓝牙设备特征修改这里的过滤条件
-            { services: ['0000ffe0-0000-1000-8000-00805f9b34fb'] }
-          ]
+          // 使用更宽松的过滤条件
+          acceptAllDevices: true,
+          optionalServices: ['battery_service', 'device_information', '0000ffe0-0000-1000-8000-00805f9b34fb', 'ffe0']
         });
 
+        // 添加更多日志输出帮助调试
+        console.log('选择的设备:', bluetoothDevice);
+
         const server = await bluetoothDevice.gatt.connect();
+        console.log('GATT 服务器已连接');
+
         const service = await server.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb');
+        console.log('获取到服务');
+
         characteristicCache = await service.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb');
+        console.log('获取到特征值');
 
         document.getElementById('send-btn').disabled = false;
         alert('蓝牙设备连接成功！');
       } catch (error) {
-        console.error('蓝牙连接错误:', error);
-        alert('蓝牙连接失败：' + error);
+        console.error('详细错误信息:', error);
+        alert('蓝牙连接失败，请尝试使用 Chrome 浏览器。错误：' + error.message);
       }
     });
 
@@ -115,6 +128,11 @@
         alert('发送数据失败：' + error);
       }
     });
+
+    if (!navigator.bluetooth) {
+      alert('你的浏览器不支持 Web Bluetooth API，请使用 Chrome 浏览器');
+      return;
+    }
   </script>
 </body>
 
