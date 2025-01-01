@@ -118,7 +118,7 @@
           gyroData.beta & 0xFF,  // Beta 数据
           gyroData.gamma & 0xFF, // Gamma 数据
           0x00,                  // 无效数据
-          0xEE  // 包尾
+          0xFE  // 包尾
         ]);
 
         await characteristicCache.writeValue(data);
