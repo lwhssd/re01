@@ -16,6 +16,55 @@
       padding: 10px 20px;
       font-size: 16px;
     }
+
+    .control-panel {
+      display: grid;
+      grid-template-areas:
+        ". up ."
+        "left reset right"
+        ". down .";
+      gap: 10px;
+      width: 300px;
+      margin: 20px auto;
+    }
+
+    .btn-up {
+      grid-area: up;
+    }
+
+    .btn-down {
+      grid-area: down;
+    }
+
+    .btn-left {
+      grid-area: left;
+    }
+
+    .btn-right {
+      grid-area: right;
+    }
+
+    .btn-reset {
+      grid-area: reset;
+    }
+
+    .control-btn {
+      padding: 15px 30px;
+      font-size: 18px;
+      border: none;
+      border-radius: 5px;
+      background-color: #4CAF50;
+      color: white;
+      cursor: pointer;
+    }
+
+    .control-btn:active {
+      background-color: #45a049;
+    }
+
+    .btn-reset {
+      background-color: #f44336;
+    }
   </style>
 </head>
 
@@ -29,6 +78,14 @@
   <button id="permission-btn" class="button">允许访问陀螺仪</button>
   <button id="ble-btn" class="button">连接蓝牙设备</button>
   <button id="send-btn" class="button" disabled>发送数据</button>
+
+  <div class="control-panel">
+    <button class="control-btn btn-up">上</button>
+    <button class="control-btn btn-left">左</button>
+    <button class="control-btn btn-reset">复位</button>
+    <button class="control-btn btn-right">右</button>
+    <button class="control-btn btn-down">下</button>
+  </div>
 
   <script>
     let gyroData = { alpha: 0, beta: 0, gamma: 0 };
@@ -224,6 +281,31 @@
     if (bluetoothDevice) {
       bluetoothDevice.addEventListener('gattserverdisconnected', handleDisconnection);
     }
+
+    // 添加控制按钮的事件处理
+    function sendCommand(command) {
+      if (!characteristicCache) {
+        alert('请先连接蓝牙设备');
+        return;
+      }
+
+      const encoder = new TextEncoder();
+      const data = encoder.encode(command + '\r\n');
+      characteristicCache.writeValue(data)
+        .then(() => {
+          console.log('发送命令:', command);
+        })
+        .catch(error => {
+          console.error('发送命令失败:', error);
+        });
+    }
+
+    // 绑定按钮事件
+    document.querySelector('.btn-up').addEventListener('click', () => sendCommand('@shang'));
+    document.querySelector('.btn-down').addEventListener('click', () => sendCommand('@xia'));
+    document.querySelector('.btn-left').addEventListener('click', () => sendCommand('@zuo'));
+    document.querySelector('.btn-right').addEventListener('click', () => sendCommand('@you'));
+    document.querySelector('.btn-reset').addEventListener('click', () => sendCommand('@fuwei'));
 
   </script>
 </body>
