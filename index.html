@@ -53,7 +53,7 @@
       font-size: 18px;
       border: none;
       border-radius: 5px;
-      background-color: #4CAF50;
+      background-color: #45a049;
       color: white;
       cursor: pointer;
     }
@@ -93,6 +93,8 @@
     let characteristicCache;
     let isTransmitting = false; // 控制发送状态
     let transmitInterval; // 发送定时器
+    let sendInterval = null;  // 用于存储定时器
+    const SEND_INTERVAL = 100;  // 发送间隔时间（毫秒）
 
     const permissionBtn = document.getElementById('permission-btn');
 
@@ -300,11 +302,61 @@
         });
     }
 
-    // 绑定按钮事件
-    document.querySelector('.btn-up').addEventListener('click', () => sendCommand('@shang'));
-    document.querySelector('.btn-down').addEventListener('click', () => sendCommand('@xia'));
-    document.querySelector('.btn-left').addEventListener('click', () => sendCommand('@zuo'));
-    document.querySelector('.btn-right').addEventListener('click', () => sendCommand('@you'));
+    // 修改发送命令的函数
+    function setupButton(button, command) {
+      let isPressed = false;
+
+      // 按下按钮
+      button.addEventListener('mousedown', () => {
+        isPressed = true;
+        sendCommand(command);  // 立即发送一次
+
+        // 设置定时发送
+        sendInterval = setInterval(() => {
+          if (isPressed) {
+            sendCommand(command);
+          }
+        }, SEND_INTERVAL);
+      });
+
+      // 触摸开始（移动设备支持）
+      button.addEventListener('touchstart', (e) => {
+        e.preventDefault();  // 防止触摸事件的默认行为
+        isPressed = true;
+        sendCommand(command);
+
+        sendInterval = setInterval(() => {
+          if (isPressed) {
+            sendCommand(command);
+          }
+        }, SEND_INTERVAL);
+      });
+
+      // 停止发送的函数
+      const stopSending = () => {
+        isPressed = false;
+        if (sendInterval) {
+          clearInterval(sendInterval);
+          sendInterval = null;
+        }
+      };
+
+      // 鼠标松开
+      button.addEventListener('mouseup', stopSending);
+      button.addEventListener('mouseleave', stopSending);
+
+      // 触摸结束
+      button.addEventListener('touchend', stopSending);
+      button.addEventListener('touchcancel', stopSending);
+    }
+
+    // 为方向按钮设置长按功能
+    setupButton(document.querySelector('.btn-up'), '@shang');
+    setupButton(document.querySelector('.btn-down'), '@xia');
+    setupButton(document.querySelector('.btn-left'), '@zuo');
+    setupButton(document.querySelector('.btn-right'), '@you');
+
+    // 复位按钮保持单击功能
     document.querySelector('.btn-reset').addEventListener('click', () => sendCommand('@fuwei'));
 
   </script>
